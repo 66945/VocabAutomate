@@ -31,16 +31,14 @@ public class VocabAutomate {
 		
 		System.out.println("Quizlet Search Term:");
 		ArrayList<String> quizlets = myMethods.searchQuizlets(sc.nextLine());
+		
+		ArrayList<String> definitions = new ArrayList<>();
 		for(String quiz : quizlets) {
-			ArrayList<String> definitions = myMethods.downloadQuizlet(quiz);
-			Collections.sort(definitions);
-				
-			output.addAll(myMethods.compareTerms(terms, definitions));
+			definitions.addAll(myMethods.downloadQuizlet(quiz));				
 		}
 		
-		for(String term : terms) {
-			System.out.println(term);
-		}
+		Collections.sort(definitions);
+		output.addAll(myMethods.compareTerms(terms, definitions));
 		
 		System.out.println("Output File:");
 		myMethods.writeToFile(output, new File(sc.nextLine()));
@@ -63,6 +61,11 @@ public class VocabAutomate {
 		for(Element link : links) {
 			if(Pattern.matches(flashCardLinkPattern, link.attr("href")))
 				searchResults.add(link.attr("href"));
+		}
+		
+		//Print statements for debugging
+		for(String result : searchResults) {
+			System.out.println(result);
 		}
 		
 		return searchResults;
@@ -100,18 +103,50 @@ public class VocabAutomate {
 	//weeds the definitions and the terms and then only returns the definitions you want
 	public ArrayList<String> compareTerms(ArrayList<String> terms, ArrayList<String> definitions) {
 		ArrayList<String> compared = new ArrayList<>();
+		ArrayList<String> leftOver = new ArrayList<>(); //the terms that don't have definitions and can't be compared. Find a better var name later
 		
-		int termsOriginalSize = terms.size();
+		//A temporary value that saves what definition the loops stop at after each term
+		//This helps reduce the redundant checks.
+		int saveVal = 0;
 		
-		int jumpVal = 0;
-		for(int i = 0; i < termsOriginalSize; i++) {
-			for(int j = jumpVal; j < definitions.size(); j++) {
-				if(!terms.get(i).startsWith("DEMONS") && definitions.get(j).startsWith(terms.get(i))) {
-					compared.add(definitions.get(j));
-					terms.set(i, "DEMONS");
+		for(int i = 0; i < terms.size(); i++) {			
+			String currentTerm = terms.get(i);
+			
+			for(int j = saveVal; j < definitions.size(); j++) {
+				String currentDef = definitions.get(j);
+				
+				//Check if the definition matches the term
+				if(currentDef.startsWith(currentTerm)) {
+					//sets the saveVal so that when the program breaks out of the loop,
+					//it will iterate both the term and definition
+					saveVal = j + 1;
+					
+					//adds the matching definition to the list of successfully found definitions
+					compared.add(currentDef);
 					break;
 				}
+				
+				//checks if this is the final value.
+				//if it is, and the program has gotten this far, the term is not in
+				//the definitions. We add it to leftOver and move on.
+				//
+				//Because the saveVal is only incremented to j+1 if the program finds a match,
+				//the counter will be reset to whatever it was after the previous term.
+				if(j + 1 == definitions.size()) {
+					leftOver.add(currentTerm);
+				}
 			}
+		}
+		
+		//Print statements for debugging
+		for(String comparison : compared) {
+			System.out.println(comparison);
+		}
+		
+		System.out.println("Failed terms:");
+		
+		for(String left : leftOver) {
+			System.out.println(left);
 		}
 		
 		return compared;
